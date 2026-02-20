@@ -23,19 +23,17 @@ author:
       url: "https://arxiv.org/search/?searchtype=author&query=Di+Lillo%2C+S"
     - label: "Email"
       icon: "fas fa-envelope"
-      url: "mailto:YOUR@EMAIL"
+      url: "mailto:dilillo@mat.uniroma2.it"
 
 collections:
   publications:
     output: true
     permalink: /publications/:path/
-  talks:
-    output: true
-    permalink: /talks/:path/
 
 defaults:
   - scope:
       path: ""
+      type: publications
     values:
       layout: single
-      author_profile: true
+      author_profile: false
