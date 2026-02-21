@@ -19,8 +19,8 @@ cv:
       - institution: CCM, Flatiron Institute
         location: New York, USA
         url: https://www.simonsfoundation.org/flatiron/center-for-computational-mathematics/
-        area:  PhD Visiting Student in Mathematics
-        highlights: 'Host supervisor: Dr. Alberto Bietti'
+        area: PhD Visiting Student in Mathematics
+        highlights: "Host supervisor: Dr. Alberto Bietti"
         start_date: 2025
         end_date: 2025
 
@@ -32,9 +32,9 @@ cv:
         end_date: Present
         score: ""
         highlights:
-          - 'Dissertation (expected completion: 2026)'
-          - 'Supervisor: Prof. Domenico Marinucci'
-        
+          - "Dissertation (expected completion: 2026)"
+          - "Supervisor: Prof. Domenico Marinucci"
+
       - institution: University of Roma
         location: Rome, Italy
         url: https://web.uniroma1.it
@@ -43,8 +43,8 @@ cv:
         end_date: 2023
         highlights:
           - "Thesis: Stein's method and applications to change-point detection"
-          - 'Supervisor: Prof.ssa Alessandra Faggionato'
-          - 'Final Grade: 110/110 with honors'
+          - "Supervisor: Prof.ssa Alessandra Faggionato"
+          - "Final Grade: 110/110 with honors"
 
       - institution: University of Pisa
         location: Pisa, Italy
@@ -54,9 +54,9 @@ cv:
         end_date: 2021
         highlights:
           - "Thesis: The SIR model: botton-up on a network"
-          - 'Supervisor: Dr. Fabio Durastante'
-          - 'Final Grade: 110/110 with honors'
-  
+          - "Supervisor: Dr. Fabio Durastante"
+          - "Final Grade: 110/110 with honors"
+
     Experience:
       - company: Institute for Advanced Study, Princeton University
         position: Professor of Theoretical Physics

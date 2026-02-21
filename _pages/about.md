@@ -29,8 +29,7 @@ latest_posts:
 
 I am Simmaco Di Lillo and I am from Rome (Italy). As of September 2023 I am a PhD candidate under the supervision of Prof. [Domenico Marinucci](https://sites.google.com/view/domenicomarinucci/home) at the [Department of Mathematics of University of Rome Tor Vergata](https://www.mat.uniroma2.it/index.php). I work on **random fields**, **limit theorems**, and their interplay with **machine learning**. I am also co-founder of [Neuture.ai](https://www.neuture.ai/en).
 
-
-<!-- 
+<!--
 My research lies in stochastic analysis and stochastic geometry: I study how geometric, spectral, and probabilistic properties of random objects (e.g. Gaussian random fields) govern their asymptotic behavior, fluctuations, and stability, with connections to functional limit theorems and modern statistical models. My PhD focuses on the probabilistic structure of deep neural networks in the *infinite-width limit* (where outputs converge to Gaussian processes). I have worked on spectral complexity and asymptotic regimes of neural architectures; on the geometry of level sets (Kac–Rice formula, random field techniques); on critical points and large deviation principles in the deep limit. Current directions include CLTs for geometric functionals of neural fields, Bayesian neural networks in the infinite-width regime, and stochastic training dynamics (e.g. Bures–Wasserstein flows).
 -->
 
