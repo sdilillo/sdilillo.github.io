@@ -7,14 +7,14 @@ ninja.data = [{
     title: "homepage",
     section: "Navigation",
     handler: () => {
-      window.location.href = "/al-folio/";
+      window.location.href = "/";
     },
   },{id: "nav-publications",
           title: "publications",
           description: "",
           section: "Navigation",
           handler: () => {
-            window.location.href = "/al-folio/publications/";
+            window.location.href = "/publications/";
           },
         },{id: "news-a-simple-inline-announcement",
           title: 'A simple inline announcement.',
@@ -23,7 +23,7 @@ ninja.data = [{
           title: 'A long announcement with details',
           description: "",
           section: "News",handler: () => {
-              window.location.href = "/al-folio/news/announcement_2/";
+              window.location.href = "/news/announcement_2/";
             },},{id: "news-a-simple-inline-announcement-with-markdown-emoji-sparkles-smile",
           title: 'A simple inline announcement with Markdown emoji! :sparkles: :smile:',
           description: "",
