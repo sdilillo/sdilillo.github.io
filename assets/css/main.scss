@@ -1,34 +1,39 @@
 ---
-# Only the main Sass file needs front matter.
+# Only the main Sass file needs front matter (the dashes are enough)
 ---
-@import "minimal-mistakes";
+@charset "utf-8";
 
-/* Publication cards */
-.pub-card{
-  border-radius: 16px;
-  overflow: hidden;
-  transition: transform .18s ease, box-shadow .18s ease;
-}
-.pub-card:hover{
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(0,0,0,.12);
-}
-.pub-meta{ margin: .25rem 0 .35rem; opacity: .85; }
-.pub-badges{ display:flex; flex-wrap:wrap; gap:.35rem; margin:.35rem 0 .35rem; }
-.pub-badge{
-  display:inline-block;
-  padding:.18rem .55rem;
-  border-radius: 999px;
-  font-size: .78rem;
-  border: 1px solid rgba(0,0,0,.12);
-  background: rgba(0,0,0,.03);
-}
-.pub-buttons{ display:flex; flex-wrap:wrap; gap:.4rem; margin:.55rem 0 .35rem; }
-.pub-tags{ display:flex; flex-wrap:wrap; gap:.35rem; margin:.35rem 0 0; opacity:.9; }
-.pub-tag{
-  display:inline-block;
-  padding:.12rem .45rem;
-  border-radius: 999px;
-  font-size:.78rem;
-  border: 1px dashed rgba(0,0,0,.18);
-}
+/* Built-in Sass modules you’ll likely use across partials */
+@use "sass:math";
+@use "sass:string";
+
+/* Configure your design tokens BEFORE loading any of your partials.
+   Make sure `_sass/_variables.scss` declares `$max-content-width: 72rem !default;` */
+@use "variables" with (
+  $max-content-width: {{ site.max_width | default:  "930px" }}
+);
+
+/* Your project partials — convert these files to `@use "variables";`
+   (or `@use "variables" as *;`) inside each file and qualify variables if needed. */
+@use "themes";
+@use "layout";
+
+// Core styles organized by usage
+@use "typography";
+@use "navbar";
+@use "footer";
+@use "blog";
+@use "publications";
+@use "components";
+@use "utilities";
+
+// Other specialized styles
+@use "distill";
+@use "cv";
+@use "tabs";
+@use "teachings";
+@use "typograms";
+@use "font-awesome/fontawesome";
+@use "font-awesome/brands";
+@use "font-awesome/solid";
+@use "font-awesome/regular";

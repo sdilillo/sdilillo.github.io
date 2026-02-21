@@ -1,0 +1,20 @@
+# Collaboratori (autori delle tue pubblicazioni – i nomi diventano link)
+"marinucci":
+  - firstname: ["Domenico"]
+    url: https://sites.google.com/view/domenicomarinucci/home
+
+"salvi":
+  - firstname: ["Michele"]
+    url: https://www.mat.uniroma2.it/
+
+"vigogna":
+  - firstname: ["Stefano", "S."]
+    url: https://www.mat.uniroma2.it/
+
+"pacchiarotti":
+  - firstname: ["Barbara"]
+    url: https://www.mat.uniroma2.it/~pacchiar/
+
+"macci":
+  - firstname: ["Claudio"]
+    url: https://www.mat.uniroma2.it/~macci/
