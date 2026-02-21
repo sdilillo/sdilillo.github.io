@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#1f2937"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <rect x="70" y="70" width="1060" height="490" rx="28" fill="rgba(255,255,255,0.06)"/>
+  <text x="110" y="190" font-size="52" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-weight="700">
+    Fractal and Regular Geometry
+  </text>
+  <text x="110" y="250" font-size="42" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-weight="700">
+    of Deep Neural Networks
+  </text>
+  <text x="110" y="330" font-size="28" fill="rgba(255,255,255,0.85)" font-family="Arial, Helvetica, sans-serif">
+    Di Lillo · Marinucci · Salvi · Vigogna (2026)
+  </text>
+  <text x="110" y="390" font-size="24" fill="rgba(255,255,255,0.75)" font-family="Arial, Helvetica, sans-serif">
+    arXiv:2504.06250
+  </text>
+  <path d="M110 455 C 220 410, 340 520, 460 455 S 700 410, 820 455 S 1040 520, 1130 455"
+        fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="6"/>
+</svg>
