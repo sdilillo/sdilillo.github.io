@@ -1,6 +1,6 @@
 ---
 layout: about
-title: homepage
+title: Homepage
 permalink: /
 subtitle: Department of Mathematics, University of Rome Tor Vergata, Via della Ricerca Scientifica 1, 00133 Rome, Italy
 
