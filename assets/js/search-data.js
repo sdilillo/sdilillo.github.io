@@ -4,17 +4,31 @@ const ninja = document.querySelector('ninja-keys');
 // add the home and posts menu items
 ninja.data = [{
     id: "nav-homepage",
-    title: "homepage",
+    title: "Homepage",
     section: "Navigation",
     handler: () => {
       window.location.href = "/";
     },
   },{id: "nav-publications",
-          title: "publications",
+          title: "Publications",
           description: "",
           section: "Navigation",
           handler: () => {
             window.location.href = "/publications/";
+          },
+        },{id: "nav-notes",
+          title: "Notes",
+          description: "My bachelor and master notes",
+          section: "Navigation",
+          handler: () => {
+            window.location.href = "/notes/";
+          },
+        },{id: "nav-software",
+          title: "Software",
+          description: "",
+          section: "Navigation",
+          handler: () => {
+            window.location.href = "/software/";
           },
         },{id: "news-a-simple-inline-announcement",
           title: 'A simple inline announcement.',
