@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Selettore Excel</title>
+
+  <!-- Libreria per leggere file .xlsx nel browser -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f6f7f9;
+      color: #111827;
+    }
+
+    main {
+      max-width: 760px;
+      margin: 60px auto;
+      padding: 32px;
+      background: white;
+      border-radius: 18px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 32px;
+    }
+
+    label {
+      display: block;
+      margin-top: 20px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    select,
+    input[type="number"] {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      font-size: 16px;
+      background: white;
+    }
+
+    .box {
+      margin-top: 24px;
+      padding: 16px;
+      border-radius: 12px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+    }
+
+    .muted {
+      color: #6b7280;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    .result-box {
+      margin-top: 24px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      border: 1px solid #e5e7eb;
+      padding: 8px 10px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      background: #f3f4f6;
+      font-weight: 700;
+    }
+
+    code {
+      background: #eef0f3;
+      padding: 2px 5px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Seleziona dati Excel</h1>
+
+    <label for="nameSelect">Scegli un nome</label>
+    <select id="nameSelect">
+      <option value="db1.xlsx">database 1</option>
+    </select>
+
+    <label for="columnSelect">Scegli una colonna</label>
+    <select id="columnSelect" disabled>
+      <option>Caricamento colonne...</option>
+    </select>
+
+    <label for="numericValue">Inserisci un valore numerico</label>
+    <input
+      id="numericValue"
+      type="number"
+      step="any"
+      placeholder="Esempio: 12.5"
+    />
+
+    <div class="box">
+      <strong>File selezionato:</strong>
+      <span id="selectedFile">mario.xlsx</span>
+      <br />
+      <strong>Colonna selezionata:</strong>
+      <span id="selectedColumn">—</span>
+      <br />
+      <strong>Valore numerico:</strong>
+      <span id="selectedNumber">—</span>
+      <br />
+      <strong>Righe trovate:</strong>
+      <span id="matchCount">0</span>
+    </div>
+
+    <div id="resultBox" class="result-box">
+    </div>
+    
+  </main>
+
+  <script>
+    const nameSelect = document.getElementById("nameSelect");
+    const columnSelect = document.getElementById("columnSelect");
+    const selectedFile = document.getElementById("selectedFile");
+    const selectedColumn = document.getElementById("selectedColumn");
+    const numericValue = document.getElementById("numericValue");
+    const selectedNumber = document.getElementById("selectedNumber");
+    const matchCount = document.getElementById("matchCount");
+    const resultBox = document.getElementById("resultBox");
+
+    let currentHeaders = [];
+    let currentDataRows = [];
+
+    async function loadExcelColumns(filePath) {
+      selectedFile.textContent = filePath;
+      selectedColumn.textContent = "—";
+      columnSelect.disabled = true;
+      columnSelect.innerHTML = "<option>Caricamento colonne...</option>";
+
+      try {
+        const response = await fetch(filePath);
+
+        if (!response.ok) {
+          throw new Error(`File non trovato: ${filePath}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+
+        // Prende il primo foglio del file Excel
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+
+        // Legge il foglio come matrice: prima riga = nomi colonne
+        const rows = XLSX.utils.sheet_to_json(worksheet, {
+          header: 1,
+          defval: ""
+        });
+
+        if (rows.length === 0) {
+          throw new Error("Il file Excel è vuoto.");
+        }
+
+        const rawHeaders = rows[0];
+        const headers = rawHeaders
+          .map(value => String(value).trim())
+          .filter(value => value.length > 0);
+
+        currentHeaders = headers;
+        currentDataRows = rows.slice(1);
+
+        if (headers.length === 0) {
+          throw new Error("Nessuna colonna trovata nella prima riga.");
+        }
+
+        columnSelect.innerHTML = "";
+
+        headers.forEach(columnName => {
+          const option = document.createElement("option");
+          option.value = columnName;
+          option.textContent = columnName;
+          columnSelect.appendChild(option);
+        });
+
+        columnSelect.disabled = false;
+        selectedColumn.textContent = columnSelect.value;
+        updateResults();
+      } catch (error) {
+        columnSelect.innerHTML = `<option>${error.message}</option>`;
+        selectedColumn.textContent = "Errore";
+        matchCount.textContent = "0";
+        resultBox.innerHTML = `<p class="muted">${error.message}</p>`;
+        console.error(error);
+      }
+    }
+
+    nameSelect.addEventListener("change", () => {
+      loadExcelColumns(nameSelect.value);
+    });
+
+    function normalizeForComparison(value) {
+      if (value === null || value === undefined) return "";
+      return String(value).trim().replace(",", ".");
+    }
+
+    function valuesAreEqual(cellValue, inputValue) {
+      const a = normalizeForComparison(cellValue);
+      const b = normalizeForComparison(inputValue);
+
+      const numA = Number(a);
+      const numB = Number(b);
+
+      if (!Number.isNaN(numA) && !Number.isNaN(numB)) {
+        return numA === numB;
+      }
+
+      return a === b;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function updateResults() {
+      const selectedColumnName = columnSelect.value;
+      const inputValue = numericValue.value;
+
+      selectedColumn.textContent = selectedColumnName || "—";
+      selectedNumber.textContent = inputValue || "—";
+
+      if (!selectedColumnName || inputValue === "") {
+        matchCount.textContent = "0";
+        resultBox.innerHTML = ``;
+        return;
+      }
+
+      const selectedColumnIndex = currentHeaders.indexOf(selectedColumnName);
+
+      if (selectedColumnIndex === -1) {
+        matchCount.textContent = "0";
+        resultBox.innerHTML = `<p class="muted">Colonna non trovata.</p>`;
+        return;
+      }
+
+      const otherColumnIndexes = currentHeaders
+        .map((_, index) => index)
+        .filter(index => index !== selectedColumnIndex);
+
+      const matchingRows = currentDataRows.filter(row => {
+        return valuesAreEqual(row[selectedColumnIndex], inputValue);
+      });
+
+      matchCount.textContent = String(matchingRows.length);
+
+      if (matchingRows.length === 0) {
+        resultBox.innerHTML = `<p class="muted">Nessuna riga trovata.</p>`;
+        return;
+      }
+
+      const headerHtml = otherColumnIndexes
+        .map(index => `<th>${escapeHtml(currentHeaders[index])}</th>`)
+        .join("");
+
+      const rowsHtml = matchingRows
+        .map(row => {
+          const cellsHtml = otherColumnIndexes
+            .map(index => `<td>${escapeHtml(row[index])}</td>`)
+            .join("");
+          return `<tr>${cellsHtml}</tr>`;
+        })
+        .join("");
+
+      resultBox.innerHTML = `
+        <table>
+          <thead>
+            <tr>${headerHtml}</tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      `;
+    }
+
+    columnSelect.addEventListener("change", updateResults);
+
+    numericValue.addEventListener("input", updateResults);
+
+    loadExcelColumns(nameSelect.value);
+  </script>
+</body>
+</html>
