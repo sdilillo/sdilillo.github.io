@@ -5,16 +5,19 @@
 
 "salvi":
   - firstname: ["Michele"]
-    url: https://www.mat.uniroma2.it/
+    url: https://michelesalvi.github.io
 
 "vigogna":
   - firstname: ["Stefano", "S."]
-    url: https://www.mat.uniroma2.it/
+    url: https://stefanovigogna.github.io
 
 "pacchiarotti":
   - firstname: ["Barbara"]
-    url: https://www.mat.uniroma2.it/~pacchiar/
+    url: https://barbarapacchiarotti.github.io/sito/
 
 "macci":
   - firstname: ["Claudio"]
-    url: https://www.mat.uniroma2.it/~macci/
+    url: https://sites.google.com/view/claudiomacci/
+"maini":
+  - firstname: ["Leonardo"]
+    url : https://sites.google.com/view/leonardomaini/home-page
