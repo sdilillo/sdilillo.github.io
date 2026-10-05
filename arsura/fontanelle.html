@@ -265,9 +265,10 @@ let direzione = null, direzioneGps = null, bussolaAttiva = false, rafDirezione =
 // Smorza i piccoli tremolii della bussola, tenendo conto del passaggio 359° → 0°
 function impostaDirezione(gradi, subito) {
   if (direzione == null || subito) direzione = gradi;
-  else direzione += (((gradi - direzione) % 360) + 540) % 360 - 180 > 0
-    ? Math.min(((((gradi - direzione) % 360) + 540) % 360 - 180) * 0.3, 30)
-    : Math.max(((((gradi - direzione) % 360) + 540) % 360 - 180) * 0.3, -30);
+  else {
+    const diff = ((gradi - direzione) % 360 + 540) % 360 - 180;   // tra -180 e 180
+    direzione += diff * 0.3;
+  }
   if (rafDirezione) return;
   rafDirezione = requestAnimationFrame(() => {
     rafDirezione = 0;
@@ -293,7 +294,7 @@ function avviaBussola() {
   if ('ondeviceorientationabsolute' in window) {
     window.addEventListener('deviceorientationabsolute', suOrientamento);
     bussolaAttiva = true;
-  } else if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
+  } else if (typeof window.DeviceOrientationEvent?.requestPermission === 'function') {
     // iOS: il permesso va chiesto in risposta a un tocco dell'utente
     DeviceOrientationEvent.requestPermission()
       .then(stato => { if (stato === 'granted') { window.addEventListener('deviceorientation', suOrientamento); bussolaAttiva = true; } })
@@ -304,7 +305,7 @@ function avviaBussola() {
   }
 }
 // Dove non serve un permesso parte subito; su iOS al primo tocco su un pulsante
-if (typeof DeviceOrientationEvent?.requestPermission !== 'function') avviaBussola();
+if (typeof window.DeviceOrientationEvent?.requestPermission !== 'function') avviaBussola();
 document.addEventListener('click', e => { if (e.target.closest('button, .leaflet-control-gps')) avviaBussola(); });
 
 // Tocco sulla mappa = posizione impostata a mano (utile anche per provare la navigazione da casa)
