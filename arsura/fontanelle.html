@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Arsura · Fontanelle di Roma</title>
+<meta name="description" content="Trova la fontanella più vicina a Roma e raggiungila a piedi.">
+<meta name="theme-color" content="#1a73e8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icona.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icona-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Arsura">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; }
+  #map { position: absolute; inset: 0; }
+
+  #pannello {
+    position: absolute; z-index: 1000; left: 12px; right: 12px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    max-width: 480px; margin: 0 auto; background: #fff; color: #222;
+    border-radius: 12px; box-shadow: 0 2px 14px rgba(0,0,0,.25);
+    padding: 12px 14px; font-size: 15px; line-height: 1.4;
+    max-height: 55vh; display: flex; flex-direction: column;
+  }
+  #pannello a { color: #1a73e8; }
+  .riga { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .riga button, .riga a.btn {
+    flex: 1 1 auto; padding: 10px; font-size: 15px; border: 0; border-radius: 8px;
+    background: #1a73e8; color: #fff; cursor: pointer; text-align: center; text-decoration: none;
+  }
+  #pannello .riga a.btn { color: #fff; }
+  #pannello .riga .sec, #pannello .riga a.btn.sec { background: #e8eef9; color: #1a4fa0; }
+  .riga button:disabled { background: #9bb8e6; cursor: default; }
+  .nascosto { display: none !important; }
+
+  #passi { margin: 8px 0 0; padding: 0; list-style: none; overflow-y: auto; border-top: 1px solid #eee; }
+  #passi li { display: flex; gap: 10px; padding: 8px 2px; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
+  #passi li .freccia { width: 24px; text-align: center; font-size: 18px; }
+  #passi li .dist { margin-left: auto; color: #666; white-space: nowrap; font-size: 14px; }
+  #passi li.attivo { background: #eaf2ff; }
+
+  #nav { display: flex; gap: 12px; align-items: center; }
+  #nav .freccia { font-size: 40px; width: 48px; text-align: center; color: #1a73e8; }
+  #nav .testo { font-size: 18px; font-weight: 600; }
+  #nav .tra { color: #555; font-size: 15px; }
+
+  .leaflet-control-gps a { font-size: 18px; line-height: 30px; text-align: center; }
+  /* Spazio per notch e barra di stato quando è installata come app */
+  .leaflet-top { top: env(safe-area-inset-top); }
+  .leaflet-right { right: env(safe-area-inset-right); }
+
+  /* Titolo */
+  #titolo {
+    position: absolute; z-index: 1000;
+    top: calc(10px + env(safe-area-inset-top)); left: calc(10px + env(safe-area-inset-left));
+    display: flex; align-items: center; gap: 7px;
+    background: #fff; color: #1b2a41; border-radius: 999px;
+    padding: 6px 14px 6px 8px; box-shadow: 0 2px 10px rgba(0,0,0,.2);
+    font-weight: 700; font-size: 17px; letter-spacing: .2px; pointer-events: none;
+  }
+  #titolo svg { width: 22px; height: 22px; }
+  #titolo small { font-weight: 400; font-size: 14px; color: #5f6b7a; }
+  @media (max-width: 360px) { #titolo small { display: none; } }
+
+  /* Posizione dell'utente */
+  .icona-utente { pointer-events: none; }
+  .icona-utente > div { position: absolute; left: 50%; top: 50%; }
+  .icona-utente .punto {
+    width: 20px; height: 20px; margin: -10px; box-sizing: border-box; border-radius: 50%;
+    background: #1a73e8; border: 3px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,.45);
+  }
+  .icona-utente .alone {
+    width: 20px; height: 20px; margin: -10px; border-radius: 50%;
+    background: rgba(26,115,232,.45); animation: pulsa 2s ease-out infinite;
+  }
+  .icona-utente .cono {
+    width: 64px; height: 64px; margin: -64px 0 0 -32px; display: none;
+    transform-origin: 50% 100%; clip-path: polygon(50% 100%, 12% 0, 88% 0);
+    background: radial-gradient(circle at 50% 100%, rgba(26,115,232,.55), rgba(26,115,232,0) 72%);
+  }
+  .icona-utente.con-direzione .cono { display: block; }
+  .icona-utente.manuale .punto { background: #e8401a; }
+  .icona-utente.manuale .alone, .icona-utente.manuale .cono { display: none; }
+  @keyframes pulsa { from { transform: scale(1); opacity: .9; } to { transform: scale(3.4); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .icona-utente .alone { animation: none; opacity: 0; } }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="titolo">
+  <svg viewBox="26 10 48 76" aria-hidden="true">
+    <path d="M50 14 L30.7 49.5 A22 22 0 1 0 69.3 49.5 Z" fill="#1a73e8"/>
+    <path d="M38 60 A13 13 0 0 0 46 73" stroke="#fff" stroke-width="4" stroke-linecap="round" fill="none" opacity=".8"/>
+  </svg>
+  Arsura <small>fontanelle di Roma</small>
+</div>
+
+<div id="pannello">
+  <!-- Vista navigazione -->
+  <div id="nav" class="nascosto">
+    <div class="freccia" id="navFreccia">↑</div>
+    <div>
+      <div class="testo" id="navTesto"></div>
+      <div class="tra" id="navTra"></div>
+    </div>
+  </div>
+
+  <div id="info">Caricamento fontanelle…</div>
+
+  <div class="riga" id="rigaVicina">
+    <button id="vicina" disabled>Fontanella più vicina</button>
+  </div>
+  <div class="riga nascosto" id="azioniPercorso">
+    <button id="avvia">▶ Avvia</button>
+    <button id="toggleLista" class="sec">Indicazioni</button>
+    <a id="apriApp" class="btn sec" target="_blank" rel="noopener">Apri in Google Maps</a>
+  </div>
+  <div class="riga nascosto" id="azioniNav">
+    <button id="voce" class="sec">🔊 Voce: sì</button>
+    <a id="apriAppNav" class="btn sec" target="_blank" rel="noopener">Google Maps</a>
+    <button id="termina">■ Termina</button>
+  </div>
+
+  <ol id="passi" class="nascosto"></ol>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+<script>
+// ===================== CONFIGURAZIONE =====================
+const CSV_URL  = 'fontanelle.csv';   // percorso del CSV rispetto a questa pagina
+const COL_LAT  = null;               // es. 'latitudine'; null = riconoscimento automatico
+const COL_LON  = null;               // es. 'longitudine'
+const COL_NOME = null;               // es. 'indirizzo' (facoltativo)
+const CENTRO   = [41.9028, 12.4964]; // vista iniziale (Roma)
+const ZOOM     = 14;
+// true  = toccando una fontanella si apre subito Google Maps con il percorso a piedi
+// false = il percorso e la navigazione restano dentro la pagina
+const APRI_IN_MAPS = false;
+// Soglie di navigazione (metri)
+const RAGGIO_MANOVRA = 15;   // entro questa distanza dalla svolta si passa all'indicazione successiva
+const RAGGIO_ARRIVO  = 20;   // entro questa distanza dalla fontanella si è arrivati
+const FUORI_PERCORSO = 35;   // oltre questa distanza dal percorso si ricalcola
+// ==========================================================
+
+const OSRM = 'https://routing.openstreetmap.de/routed-foot';
+
+const map = L.map('map', { preferCanvas: true, zoomControl: false }).setView(CENTRO, ZOOM);
+L.control.zoom({ position: 'topright' }).addTo(map);
+map.createPane('precisione').style.zIndex = 350;   // cerchio di precisione GPS, sotto le fontanelle
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map);
+
+const $ = id => document.getElementById(id);
+const info = $('info');
+
+let fontanelle = [];
+let posizione = null, markerUtente = null, cerchioPrecisione = null, primaPosizione = true;
+let manuale = false;            // true dopo un tocco sulla mappa: il GPS viene ignorato
+let destinazione = null;        // fontanella selezionata
+let percorso = null;            // ultima risposta OSRM (route)
+let linea = null;
+let navigando = false, passoCorrente = 1, ultimoRicalcolo = 0, annunciatoVicino = false;
+let voceAttiva = true, wakeLock = null;
+
+// =============== Lettura CSV ===============
+function trovaColonna(header, scelta, candidati) {
+  if (scelta) return scelta;
+  return header.find(h => candidati.includes(h.trim().toLowerCase())) ?? null;
+}
+function numero(v) {
+  if (typeof v === 'number') return v;
+  if (v == null) return NaN;
+  return parseFloat(String(v).trim().replace(',', '.'));
+}
+
+Papa.parse(CSV_URL, {
+  download: true, header: true, skipEmptyLines: true,
+  complete: ({ data, meta }) => {
+    const h = meta.fields || [];
+    const cLat  = trovaColonna(h, COL_LAT,  ['lat', 'latitude', 'latitudine', 'y']);
+    const cLon  = trovaColonna(h, COL_LON,  ['lon', 'lng', 'long', 'longitude', 'longitudine', 'x']);
+    const cNome = trovaColonna(h, COL_NOME, ['nome', 'name', 'indirizzo', 'via', 'descrizione', 'address']);
+    if (!cLat || !cLon) {
+      info.textContent = `Non trovo le colonne di latitudine/longitudine. Colonne del CSV: ${h.join(', ')}. Impostale in COL_LAT e COL_LON.`;
+      return;
+    }
+    for (const r of data) {
+      const lat = numero(r[cLat]), lon = numero(r[cLon]);
+      if (!isFinite(lat) || !isFinite(lon)) continue;
+      const f = { lat, lon, nome: cNome ? (r[cNome] || '').trim() : '' };
+      f.marker = L.circleMarker([lat, lon], {
+        radius: 7, color: '#0b5394', weight: 2, fillColor: '#4fa3ff', fillOpacity: 0.9
+      }).addTo(map);
+      if (f.nome) f.marker.bindTooltip(f.nome);
+      f.marker.on('click', e => {
+        L.DomEvent.stopPropagation(e);
+        if (APRI_IN_MAPS) apriMaps(f);
+        else if (!navigando) vaiA(f);
+      });
+      fontanelle.push(f);
+    }
+    if (!percorso) info.textContent = `${fontanelle.length} fontanelle. ` +
+      (APRI_IN_MAPS ? 'Tocca una fontanella per aprire il percorso in Google Maps.'
+       : posizione ? 'Tocca una fontanella per il percorso.' : 'Sto cercando la tua posizione…');
+    aggiornaBottone();
+  },
+  error: () => { info.textContent = `Impossibile caricare ${CSV_URL}.`; }
+});
+
+// =============== Posizione ===============
+// accuratezza in metri (solo da GPS); senza accuratezza = posizione scelta a mano
+function impostaPosizione(latlng, accuratezza) {
+  posizione = L.latLng(latlng);
+  if (!markerUtente) {
+    markerUtente = L.marker(posizione, {
+      icon: L.divIcon({
+        className: 'icona-utente', iconSize: [64, 64],
+        html: '<div class="cono"></div><div class="alone"></div><div class="punto"></div>'
+      }),
+      interactive: false, keyboard: false, zIndexOffset: 1000
+    }).addTo(map);
+    cerchioPrecisione = L.circle(posizione, {
+      pane: 'precisione', interactive: false, radius: 0,
+      color: '#1a73e8', weight: 1, opacity: 0.35, fillColor: '#1a73e8', fillOpacity: 0.1
+    }).addTo(map);
+  }
+  markerUtente.setLatLng(posizione);
+  cerchioPrecisione.setLatLng(posizione).setRadius(accuratezza || 0);
+  markerUtente.getElement()?.classList.toggle('manuale', manuale);
+  if (primaPosizione) {
+    map.setView(posizione, 16); primaPosizione = false;
+    if (!percorso && fontanelle.length) info.textContent = `${fontanelle.length} fontanelle. Tocca una fontanella per il percorso.`;
+  }
+  aggiornaBottone();
+  if (navigando) aggiornaNavigazione();
+}
+
+if ('geolocation' in navigator) {
+  navigator.geolocation.watchPosition(
+    p => {
+      if (manuale) return;
+      // In movimento la direzione del GPS è più affidabile della bussola
+      const c = p.coords;
+      if (c.heading != null && !isNaN(c.heading) && c.speed > 0.7) direzioneGps = c.heading;
+      else direzioneGps = null;
+      impostaPosizione([c.latitude, c.longitude], c.accuracy);
+      if (direzioneGps != null) impostaDirezione(direzioneGps, true);
+    },
+    () => { if (!posizione) info.textContent = 'Posizione non disponibile: tocca la mappa per indicare dove sei.'; },
+    { enableHighAccuracy: true, maximumAge: 5000 }
+  );
+}
+
+// =============== Direzione (bussola) ===============
+let direzione = null, direzioneGps = null, bussolaAttiva = false, rafDirezione = 0;
+
+// Smorza i piccoli tremolii della bussola, tenendo conto del passaggio 359° → 0°
+function impostaDirezione(gradi, subito) {
+  if (direzione == null || subito) direzione = gradi;
+  else direzione += (((gradi - direzione) % 360) + 540) % 360 - 180 > 0
+    ? Math.min(((((gradi - direzione) % 360) + 540) % 360 - 180) * 0.3, 30)
+    : Math.max(((((gradi - direzione) % 360) + 540) % 360 - 180) * 0.3, -30);
+  if (rafDirezione) return;
+  rafDirezione = requestAnimationFrame(() => {
+    rafDirezione = 0;
+    const el = markerUtente?.getElement();
+    if (!el) return;
+    el.classList.add('con-direzione');
+    el.querySelector('.cono').style.transform = `rotate(${direzione}deg)`;
+  });
+}
+
+function suOrientamento(e) {
+  if (direzioneGps != null) return;   // si sta camminando: vince il GPS
+  let gradi;
+  if (e.webkitCompassHeading != null) gradi = e.webkitCompassHeading;            // iOS
+  else if (e.absolute && e.alpha != null) gradi = 360 - e.alpha;                 // Android
+  else return;
+  gradi += screen.orientation?.angle || 0;   // telefono in orizzontale
+  impostaDirezione((gradi + 360) % 360);
+}
+
+function avviaBussola() {
+  if (bussolaAttiva) return;
+  if ('ondeviceorientationabsolute' in window) {
+    window.addEventListener('deviceorientationabsolute', suOrientamento);
+    bussolaAttiva = true;
+  } else if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
+    // iOS: il permesso va chiesto in risposta a un tocco dell'utente
+    DeviceOrientationEvent.requestPermission()
+      .then(stato => { if (stato === 'granted') { window.addEventListener('deviceorientation', suOrientamento); bussolaAttiva = true; } })
+      .catch(() => {});
+  } else if ('DeviceOrientationEvent' in window) {
+    window.addEventListener('deviceorientation', suOrientamento);
+    bussolaAttiva = true;
+  }
+}
+// Dove non serve un permesso parte subito; su iOS al primo tocco su un pulsante
+if (typeof DeviceOrientationEvent?.requestPermission !== 'function') avviaBussola();
+document.addEventListener('click', e => { if (e.target.closest('button, .leaflet-control-gps')) avviaBussola(); });
+
+// Tocco sulla mappa = posizione impostata a mano (utile anche per provare la navigazione da casa)
+map.on('click', e => {
+  manuale = true;
+  impostaPosizione(e.latlng);
+  if (!navigando) {
+    if (destinazione) vaiA(destinazione);
+    else info.textContent = 'Posizione impostata. Tocca una fontanella per il percorso.';
+  }
+});
+
+// Pulsante per tornare al GPS
+const GpsControl = L.Control.extend({
+  options: { position: 'topright' },
+  onAdd() {
+    const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-gps');
+    const a = L.DomUtil.create('a', '', div);
+    a.href = '#'; a.title = 'Usa il GPS'; a.textContent = '◎';
+    L.DomEvent.on(a, 'click', e => {
+      L.DomEvent.stop(e);
+      manuale = false;
+      navigator.geolocation?.getCurrentPosition(
+        p => { impostaPosizione([p.coords.latitude, p.coords.longitude], p.coords.accuracy); map.setView(posizione, 17); },
+        () => { info.textContent = 'GPS non disponibile.'; },
+        { enableHighAccuracy: true }
+      );
+    });
+    return div;
+  }
+});
+map.addControl(new GpsControl());
+
+function aggiornaBottone() {
+  $('vicina').disabled = !(posizione && fontanelle.length) || navigando;
+}
+
+// =============== Testo delle indicazioni ===============
+const DIREZIONE = {
+  'left': 'a sinistra', 'right': 'a destra',
+  'slight left': 'leggermente a sinistra', 'slight right': 'leggermente a destra',
+  'sharp left': 'decisamente a sinistra', 'sharp right': 'decisamente a destra',
+  'straight': 'dritto', 'uturn': 'indietro'
+};
+const FRECCIA = {
+  'left': '←', 'right': '→', 'slight left': '↖', 'slight right': '↗',
+  'sharp left': '↙', 'sharp right': '↘', 'straight': '↑', 'uturn': '↶'
+};
+
+function freccia(step) {
+  const t = step.maneuver.type;
+  if (t === 'arrive') return '⚑';
+  if (t === 'depart') return '↑';
+  if (t === 'roundabout' || t === 'rotary' || t === 'exit roundabout' || t === 'exit rotary') return '⟳';
+  return FRECCIA[step.maneuver.modifier] || '↑';
+}
+
+function istruzione(step, nomeDest) {
+  const m = step.maneuver, t = m.type, mod = m.modifier, dir = DIREZIONE[mod] || '';
+  const nome = step.name ? step.name : '';
+  const in_ = nome ? ` in ${nome}` : '';
+  const su  = nome ? ` su ${nome}` : '';
+  switch (t) {
+    case 'depart':
+      return nome ? `Parti lungo ${nome}` : 'Parti';
+    case 'arrive': {
+      const lato = mod === 'left' ? ', è sulla sinistra' : mod === 'right' ? ', è sulla destra' : '';
+      return `Sei arrivato${nomeDest ? ' a ' + nomeDest : ' alla fontanella'}${lato}`;
+    }
+    case 'roundabout': case 'rotary':
+      return m.exit ? `Alla rotonda prendi la ${m.exit}ª uscita${in_}` : `Entra nella rotonda${in_}`;
+    case 'exit roundabout': case 'exit rotary':
+      return `Esci dalla rotonda${in_}`;
+    case 'fork':
+      return `Al bivio tieni ${dir || 'dritto'}${su}`;
+    case 'end of road':
+      return `In fondo alla strada gira ${dir}${in_}`;
+    case 'merge':
+      return `Immettiti${in_}`;
+    case 'continue': case 'new name':
+      if (!mod || mod === 'straight') return nome ? `Prosegui${su}` : 'Prosegui dritto';
+      if (mod === 'uturn') return 'Torna indietro';
+      return `Prosegui ${dir}${su}`;
+    default: // turn, on ramp, off ramp, notification, ...
+      if (mod === 'straight') return nome ? `Prosegui dritto${su}` : 'Prosegui dritto';
+      if (mod === 'uturn') return `Torna indietro${su}`;
+      return `Gira ${dir}${in_}`;
+  }
+}
+
+function fmtDist(m) {
+  if (m >= 1000) return `${(m / 1000).toFixed(1).replace('.', ',')} km`;
+  if (m >= 100) return `${Math.round(m / 10) * 10} m`;
+  return `${Math.max(5, Math.round(m / 5) * 5)} m`;
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// =============== Google Maps ===============
+// Link universale: sul telefono apre l'app Google Maps (se installata), altrimenti il sito.
+// Senza "origin", Google Maps parte dalla posizione attuale dell'utente.
+function linkMaps(f) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${f.lat},${f.lon}&travelmode=walking`;
+}
+function apriMaps(f) {
+  window.location.href = linkMaps(f);
+}
+
+// =============== Calcolo del percorso ===============
+async function calcolaPercorso(da, f) {
+  const url = `${OSRM}/route/v1/foot/${da.lng},${da.lat};${f.lon},${f.lat}` +
+              `?overview=full&geometries=geojson&steps=true`;
+  const data = await (await fetch(url)).json();
+  if (data.code !== 'Ok') throw new Error(data.code);
+  return data.routes[0];
+}
+
+function disegnaPercorso(r) {
+  if (linea) map.removeLayer(linea);
+  linea = L.geoJSON(r.geometry, { style: { color: '#1a73e8', weight: 6, opacity: 0.85 } }).addTo(map);
+}
+
+async function vaiA(f) {
+  destinazione = f;
+  if (!posizione) {
+    // Senza posizione il percorso interno non si può calcolare, ma Google Maps sì
+    info.innerHTML = 'Per il percorso qui serve la tua posizione: consentila o tocca la mappa. ' +
+      `Oppure <a href="${linkMaps(f)}" target="_blank" rel="noopener">apri in Google Maps</a>.`;
+    return;
+  }
+  info.textContent = 'Calcolo del percorso…';
+  try {
+    percorso = await calcolaPercorso(posizione, f);
+    disegnaPercorso(percorso);
+    map.fitBounds(linea.getBounds(), { padding: [40, 40] });
+    mostraRiepilogo();
+    riempiLista();
+    $('azioniPercorso').classList.remove('nascosto');
+    $('apriApp').href = $('apriAppNav').href = linkMaps(f);
+  } catch (e) {
+    info.textContent = 'Impossibile calcolare il percorso in questo momento.';
+  }
+}
+
+function mostraRiepilogo() {
+  const r = percorso, f = destinazione;
+  const min = Math.max(1, Math.round(r.duration / 60));
+  info.innerHTML = `${f.nome ? `<b>${escapeHtml(f.nome)}</b><br>` : ''}` +
+                   `${fmtDist(r.distance)} · circa ${min} min a piedi`;
+}
+
+function passi() { return percorso.legs[0].steps; }
+
+function riempiLista() {
+  const ol = $('passi');
+  ol.innerHTML = '';
+  passi().forEach((s, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="freccia">${freccia(s)}</span>` +
+                   `<span>${escapeHtml(istruzione(s, destinazione.nome))}</span>` +
+                   (s.distance > 0 ? `<span class="dist">${fmtDist(s.distance)}</span>` : '');
+    const [lon, lat] = s.maneuver.location;
+    li.addEventListener('click', () => map.setView([lat, lon], 18));
+    ol.appendChild(li);
+  });
+}
+
+$('toggleLista').addEventListener('click', () => {
+  const ol = $('passi');
+  ol.classList.toggle('nascosto');
+  $('toggleLista').textContent = ol.classList.contains('nascosto') ? 'Indicazioni' : 'Nascondi';
+});
+
+// =============== Fontanella più vicina ===============
+$('vicina').addEventListener('click', async () => {
+  if (!posizione || !fontanelle.length) return;
+  $('vicina').disabled = true;
+  info.textContent = 'Cerco la fontanella più vicina…';
+  const candidate = fontanelle
+    .map(f => ({ f, d: posizione.distanceTo([f.lat, f.lon]) }))
+    .sort((a, b) => a.d - b.d).slice(0, 10).map(x => x.f);
+  let scelta = candidate[0];
+  try {
+    const coord = [`${posizione.lng},${posizione.lat}`, ...candidate.map(f => `${f.lon},${f.lat}`)].join(';');
+    const data = await (await fetch(`${OSRM}/table/v1/foot/${coord}?sources=0&annotations=distance`)).json();
+    if (data.code === 'Ok') {
+      const d = data.distances[0].slice(1);
+      let best = -1;
+      d.forEach((v, i) => { if (v != null && (best < 0 || v < d[best])) best = i; });
+      if (best >= 0) scelta = candidate[best];
+    }
+  } catch (e) { /* resta la più vicina in linea d'aria */ }
+  if (APRI_IN_MAPS) { apriMaps(scelta); aggiornaBottone(); return; }
+  await vaiA(scelta);
+  aggiornaBottone();
+});
+
+// =============== Navigazione passo-passo ===============
+function parla(testo) {
+  if (!voceAttiva || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(testo);
+  u.lang = 'it-IT';
+  speechSynthesis.speak(u);
+}
+
+// Distanza (m) dal punto al percorso disegnato
+function distanzaDalPercorso(p) {
+  const c = percorso.geometry.coordinates;
+  const kx = 111320 * Math.cos(p.lat * Math.PI / 180), ky = 110540;
+  const px = p.lng * kx, py = p.lat * ky;
+  let min = Infinity;
+  for (let i = 0; i < c.length - 1; i++) {
+    const ax = c[i][0] * kx, ay = c[i][1] * ky, bx = c[i + 1][0] * kx, by = c[i + 1][1] * ky;
+    const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+    let t = l2 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    min = Math.min(min, Math.hypot(px - (ax + t * dx), py - (ay + t * dy)));
+  }
+  return min;
+}
+
+function distanzaDa(step) {
+  const [lon, lat] = step.maneuver.location;
+  return posizione.distanceTo([lat, lon]);
+}
+
+function mostraPasso(annuncia) {
+  const s = passi()[passoCorrente];
+  const testo = istruzione(s, destinazione.nome);
+  $('navFreccia').textContent = freccia(s);
+  $('navTesto').textContent = testo;
+  const d = distanzaDa(s);
+  $('navTra').textContent = s.maneuver.type === 'arrive' ? `Arrivo tra ${fmtDist(d)}` : `tra ${fmtDist(d)}`;
+  document.querySelectorAll('#passi li').forEach((li, i) => li.classList.toggle('attivo', i === passoCorrente));
+  if (annuncia) parla(d > 40 ? `Tra ${fmtDist(d).replace('m', 'metri')}, ${testo}` : testo);
+}
+
+async function aggiornaNavigazione() {
+  if (!navigando || !percorso) return;
+  const s = passi();
+
+  // Arrivato?
+  // (la fontanella o il punto di arrivo del percorso, che può essere sulla strada accanto)
+  const dDest = Math.min(posizione.distanceTo([destinazione.lat, destinazione.lon]), distanzaDa(s[s.length - 1]));
+  if (dDest < RAGGIO_ARRIVO) {
+    passoCorrente = s.length - 1;
+    mostraPasso(false);
+    parla(istruzione(s[passoCorrente], destinazione.nome));
+    terminaNavigazione(true);
+    return;
+  }
+
+  // Fuori percorso? Ricalcola (al massimo ogni 8 secondi)
+  if (distanzaDalPercorso(posizione) > FUORI_PERCORSO && Date.now() - ultimoRicalcolo > 8000) {
+    ultimoRicalcolo = Date.now();
+    $('navTra').textContent = 'Ricalcolo del percorso…';
+    try {
+      percorso = await calcolaPercorso(posizione, destinazione);
+      disegnaPercorso(percorso);
+      riempiLista();
+      passoCorrente = 1;
+      annunciatoVicino = false;
+      parla('Ricalcolo il percorso');
+      mostraPasso(true);
+    } catch (e) { /* riprova al prossimo aggiornamento */ }
+    return;
+  }
+
+  // Raggiunta una svolta (anche saltandone qualcuna)? Passa alla successiva
+  for (let i = s.length - 2; i >= passoCorrente; i--) {
+    if (distanzaDa(s[i]) < RAGGIO_MANOVRA) {
+      passoCorrente = i + 1;
+      annunciatoVicino = false;
+      mostraPasso(true);
+      map.setView(posizione, Math.max(map.getZoom(), 17));
+      return;
+    }
+  }
+
+  // Promemoria vocale quando ci si avvicina alla svolta
+  const d = distanzaDa(s[passoCorrente]);
+  if (d < 30 && !annunciatoVicino && s[passoCorrente].maneuver.type !== 'arrive') {
+    annunciatoVicino = true;
+    parla(istruzione(s[passoCorrente], destinazione.nome));
+  }
+  mostraPasso(false);
+  map.panTo(posizione);
+}
+
+async function avviaNavigazione() {
+  if (!percorso) return;
+  navigando = true;
+  passoCorrente = 1;   // il passo 0 è la partenza
+  annunciatoVicino = false;
+  $('nav').classList.remove('nascosto');
+  $('azioniNav').classList.remove('nascosto');
+  $('azioniPercorso').classList.add('nascosto');
+  $('info').classList.add('nascosto');
+  $('rigaVicina').classList.add('nascosto');
+  $('passi').classList.add('nascosto');
+  $('toggleLista').textContent = 'Indicazioni';
+  aggiornaBottone();
+  map.setView(posizione, 18);
+  // Prima indicazione: la partenza unita alla prima svolta
+  const s = passi();
+  mostraPasso(false);
+  parla(`${istruzione(s[0], destinazione.nome)}. Poi, tra ${fmtDist(distanzaDa(s[1])).replace('m', 'metri')}, ${istruzione(s[1], destinazione.nome)}`);
+  try { wakeLock = await navigator.wakeLock?.request('screen'); } catch (e) { /* non supportato */ }
+}
+
+function terminaNavigazione(arrivato) {
+  navigando = false;
+  $('azioniNav').classList.add('nascosto');
+  $('azioniPercorso').classList.remove('nascosto');
+  $('info').classList.remove('nascosto');
+  $('rigaVicina').classList.remove('nascosto');
+  if (arrivato) {
+    info.innerHTML = `<b>Sei arrivato!</b>${destinazione.nome ? ' ' + escapeHtml(destinazione.nome) : ''}`;
+  } else {
+    $('nav').classList.add('nascosto');
+    mostraRiepilogo();
+  }
+  if (!arrivato) speechSynthesis?.cancel();
+  wakeLock?.release?.(); wakeLock = null;
+  aggiornaBottone();
+}
+
+$('avvia').addEventListener('click', () => { $('nav').classList.add('nascosto'); avviaNavigazione(); });
+$('termina').addEventListener('click', () => terminaNavigazione(false));
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+$('voce').addEventListener('click', () => {
+  voceAttiva = !voceAttiva;
+  $('voce').textContent = voceAttiva ? '🔊 Voce: sì' : '🔇 Voce: no';
+  if (!voceAttiva) speechSynthesis?.cancel();
+});
+</script>
+</body>
+</html>
